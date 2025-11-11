@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi User Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        h1 {
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        #logInBtn {
+            background-color: #28a745;
+            color: white;
+        }
+        #logOutBtn {
+            background-color: #dc3545;
+            color: white;
+        }
+        #logInBtn:hover { background-color: #218838; }
+        #logOutBtn:hover { background-color: #c82333; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📶 WiFi User Activity Log</h1>
+
+        <div class="controls">
+            <input type="text" id="userNameInput" placeholder="Enter User Name">
+            <button id="logInBtn">Log In</button>
+            <button id="logOutBtn">Log Out</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>User Name</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="userLogBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const userNameInput = document.getElementById('userNameInput');
+            const logInBtn = document.getElementById('logInBtn');
+            const logOutBtn = document.getElementById('logOutBtn');
+            const userLogBody = document.getElementById('userLogBody');
+
+            // Load data from browser's localStorage or start with an empty array
+            let userLog = JSON.parse(localStorage.getItem('wifiUserLog')) || [];
+
+            // Function to save the log data
+            function saveLog() {
+                localStorage.setItem('wifiUserLog', JSON.stringify(userLog));
+            }
+
+            // Function to format the current time
+            function formatTime(date) {
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+
+            // Function to render the table rows
+            function renderLog() {
+                userLogBody.innerHTML = ''; // Clear existing rows
+                userLog.forEach(log => {
+                    const row = userLogBody.insertRow();
+
+                    row.insertCell().textContent = log.name;
+                    row.insertCell().textContent = log.timeIn;
+                    row.insertCell().textContent = log.timeOut || '—'; // Display dash if not logged out
+                    
+                    const statusCell = row.insertCell();
+                    if (log.timeOut) {
+                        statusCell.textContent = 'Logged Out';
+                        statusCell.style.color = '#dc3545';
+                    } else {
+                        statusCell.textContent = 'Active';
+                        statusCell.style.color = '#28a745';
+                    }
+                });
+            }
+
+            // Log In handler
+            logInBtn.addEventListener('click', () => {
+                const userName = userNameInput.value.trim();
+                if (!userName) {
+                    alert('Please enter a user name to log in.');
+                    return;
+                }
+
+                // Check if user is already logged in (no timeOut)
+                const existingEntry = userLog.find(log => log.name === userName && !log.timeOut);
+                if (existingEntry) {
+                    alert(${userName} is already logged in.);
+                    return;
+                }
+
+                const newEntry = {
+                    name: userName,
+                    timeIn: formatTime(new Date()),
+                    timeOut: null // Null indicates active
+                };
+                userLog.push(newEntry);
+                saveLog();
+                renderLog();
+                userNameInput.value = '';
+            });
+
+            // Log Out handler
+            logOutBtn.addEventListener('click', () => {
+                const userName = userNameInput.value.trim();
+                if (!userName) {
+                    alert('Please enter a user name to log out.');
+                    return;
+                }
+
+                // Find the latest active log entry for this user
+                const activeEntry = userLog
+                    .slice() // Create a shallow copy
+                    .reverse() // Search from the most recent entry
+                    .find(log => log.name === userName && !log.timeOut);
+
+                if (!activeEntry) {
+                    alert(${userName} is not currently logged in or all sessions are closed.);
+                    return;
+                }
+
+                // Update the timeOut for the found entry
+                activeEntry.timeOut = formatTime(new Date());
+
+                saveLog();
+                renderLog();
+                userNameInput.value = '';
+            });
+
+            // Initial render on load
+            renderLog();
+        });
+    </script>
+</body>
+</html>
